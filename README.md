@@ -5,7 +5,7 @@ Minimal voice-to-text for Linux using local [faster-whisper](https://github.com/
 ## Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/whisper-dictate.git
+git clone https://github.com/narmaku/whisper-dictate.git
 cd whisper-dictate
 ./setup.sh
 ```
