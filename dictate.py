@@ -92,6 +92,16 @@ def clipboard_copy(text):
 
 def simulate_paste():
     """Simulate Ctrl+V using the appropriate tool for the session type."""
+    if is_wayland() and shutil.which("wtype"):
+        result = subprocess.run(
+            ["wtype", "-M", "ctrl", "-k", "v"],
+            check=False, capture_output=True,
+        )
+        if result.returncode == 0:
+            log.info("Pasted via Ctrl+V (wtype)")
+            return True
+        log.warning("wtype failed: %s", result.stderr.decode().strip())
+
     if shutil.which("ydotool"):
         env = {**os.environ, "YDOTOOL_SOCKET": "/tmp/.ydotool_socket"}
         result = subprocess.run(
@@ -117,9 +127,10 @@ def simulate_paste():
 # ---------------------------------------------------------------------------
 
 class QuickDictate:
-    def __init__(self, model_name, lang):
+    def __init__(self, model_name, lang, auto_paste=False):
         self.model_name = model_name
         self.lang = lang
+        self.auto_paste = auto_paste
         self.model = None
         self.recording = False
         self.audio_chunks = []
@@ -127,7 +138,8 @@ class QuickDictate:
         self.result_text = None
 
     def run(self):
-        log.info("Quick mode: model=%s, lang=%s", self.model_name, self.lang or "auto")
+        log.info("Quick mode: model=%s, lang=%s, paste=%s",
+                 self.model_name, self.lang or "auto", self.auto_paste)
         ctk.set_appearance_mode("dark")
 
         self.root = ctk.CTk()
@@ -174,9 +186,8 @@ class QuickDictate:
 
         self.root.mainloop()
 
-        # After window closes: paste if we have text
-        if self.result_text:
-            time.sleep(0.4)
+        if self.result_text and self.auto_paste:
+            time.sleep(1.0)
             simulate_paste()
 
     def _load_model(self):
@@ -276,8 +287,16 @@ class QuickDictate:
             log.info("Copied %d chars to clipboard", len(text))
             self.result_text = text
 
+        def _finish():
+            if text and not self.auto_paste:
+                preview = text[:60] + ("..." if len(text) > 60 else "")
+                self.status_label.configure(text=f"Copied: {preview}")
+                self.root.after(1500, self.root.destroy)
+            else:
+                self.root.destroy()
+
         try:
-            self.root.after(0, self.root.destroy)
+            self.root.after(0, _finish)
         except Exception:
             pass
 
@@ -530,7 +549,11 @@ def main():
     )
     parser.add_argument(
         "--quick", action="store_true",
-        help="Quick mode: record, transcribe, paste into active window",
+        help="Quick mode: record, transcribe, copy to clipboard",
+    )
+    parser.add_argument(
+        "--paste", action="store_true",
+        help="Auto-paste into the active window after transcription (quick mode only)",
     )
     parser.add_argument(
         "--model", default=DEFAULT_MODEL, choices=MODELS,
@@ -545,7 +568,7 @@ def main():
     lang = None if args.lang == "auto" else args.lang
 
     if args.quick:
-        QuickDictate(model_name=args.model, lang=lang).run()
+        QuickDictate(model_name=args.model, lang=lang, auto_paste=args.paste).run()
     else:
         log.info("Starting Whisper Dictate (GUI mode)")
         ctk.set_appearance_mode("dark")
