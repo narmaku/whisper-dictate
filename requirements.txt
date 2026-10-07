@@ -1,4 +1,4 @@
 faster-whisper
 sounddevice
 numpy
-customtkinter
+PySide6-Essentials
