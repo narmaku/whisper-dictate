@@ -40,28 +40,13 @@ def load_whisper_model(name):
 
 
 def clipboard_copy(text):
-    """Copy through the session clipboard; never inject keyboard events."""
-    if os.environ.get("XDG_SESSION_TYPE") == "wayland":
-        candidates = [("wl-copy", [])]
-    else:
-        candidates = [("xclip", ["-selection", "clipboard"]),
-                      ("xsel", ["--clipboard", "--input"])]
-    for command, args in candidates:
-        if not shutil.which(command):
-            continue
-        try:
-            result = subprocess.run([command, *args], input=text.encode(),
-                                    capture_output=True, check=False)
-        except OSError as exc:
-            log.error("Clipboard copy failed: %s", exc)
-            return False
-        if result.returncode:
-            log.error("Clipboard copy failed: %s",
-                      result.stderr.decode(errors="replace").strip())
-            return False
-        return True
-    log.error("No clipboard command available; the transcript is printed below.")
-    return False
+    """Use the GUI's clipboard without launching external helper windows."""
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance()
+    if app is None:
+        return False
+    app.clipboard().setText(text)
+    return True
 
 
 def close_input_stream(stream):
@@ -117,7 +102,7 @@ def transcribe_and_copy(model, audio, language, copy_result=True):
     if copied:
         print("Copied. Paste normally (Ctrl+Shift+V in terminals).", flush=True)
     else:
-        print("Copy failed. Select the transcript above to copy it manually.", flush=True)
+        print("Select the transcript above and copy it manually.", flush=True)
     return text
 
 
@@ -396,8 +381,7 @@ def run_gui(model_name, language, quick=False):
             self.status.setText("Copied. Paste normally." if copied else
                                 "Copy failed. Select and copy the transcript manually.")
             if quick and copied:
-                self.status.setText("Text copied. Paste normally in your app.")
-                QTimer.singleShot(1500, self.close)
+                self.status.setText("Copied. Paste in your app, then press Escape to close.")
 
         def copy_text(self):
             text = self.text.toPlainText().strip()

@@ -16,19 +16,20 @@ class DictationTests(unittest.TestCase):
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertIn('--repeat',result.stdout)
 
-    @patch.dict('os.environ',{'XDG_SESSION_TYPE':'wayland'})
-    @patch('dictate.shutil.which',return_value='/usr/bin/wl-copy')
-    @patch('dictate.subprocess.run',return_value=Mock(returncode=1,stderr=b'clipboard unavailable'))
-    def test_clipboard_failure_is_reported(self,run,which):
-        self.assertFalse(dictate.clipboard_copy('test'))
+    def test_terminal_does_not_spawn_clipboard_helpers(self):
+        with patch('PySide6.QtWidgets.QApplication.instance', return_value=None), \
+             patch.object(dictate.subprocess, 'run') as run:
+            self.assertFalse(dictate.clipboard_copy('test'))
+            run.assert_not_called()
 
-    @patch.dict('os.environ',{'XDG_SESSION_TYPE':'wayland'})
-    @patch('dictate.shutil.which',return_value='/usr/bin/wl-copy')
-    @patch('dictate.subprocess.run',return_value=Mock(returncode=0))
-    def test_clipboard_preserves_unicode_via_stdin(self,run,which):
-        self.assertTrue(dictate.clipboard_copy('こんにちは\nsecond line'))
-        self.assertEqual(run.call_args.kwargs['input'],'こんにちは\nsecond line'.encode())
-        self.assertEqual(run.call_args.args[0],['wl-copy'])
+    @patch.dict('os.environ', {'QT_QPA_PLATFORM': 'offscreen'})
+    def test_clipboard_preserves_unicode_without_helpers(self):
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance() or QApplication([])
+        with patch.object(dictate.subprocess, 'run') as run:
+            self.assertTrue(dictate.clipboard_copy('こんにちは\nsecond line'))
+            self.assertEqual(app.clipboard().text(), 'こんにちは\nsecond line')
+            run.assert_not_called()
 
     @patch('dictate.input',side_effect=KeyboardInterrupt,create=True)
     @patch('dictate.sd.InputStream')
@@ -93,6 +94,11 @@ class DictationTests(unittest.TestCase):
                     self.assertEqual(window.languages.currentData(), 'es')
                     self.assertEqual([window.models.itemText(i) for i in range(window.models.count())], dictate.MODELS)
                     self.assertTrue(window.record.isEnabled())
+                    with patch.object(dictate.subprocess, 'run') as external_copy:
+                        window.transcribed('Hola mi niño, como esta?')
+                        self.assertEqual(app.clipboard().text(), 'Hola mi niño, como esta?')
+                        window.copy_text()
+                        external_copy.assert_not_called()
                     window.languages.setCurrentText('Japanese')
                     self.assertEqual(window.languages.currentData(), 'ja')
                     phase[0] = 1

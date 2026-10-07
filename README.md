@@ -32,19 +32,20 @@ The language/model selectors remain available between recordings.
 # Full GUI with Spanish and a different model
 .venv/bin/python dictate.py --model medium --lang es
 
-# Quick GUI: start recording when ready and close after successful copy
+# Quick GUI: start recording when ready; Escape closes after you paste
 .venv/bin/python dictate.py --quick --model small --lang en
 ```
 
-Quick mode never pastes automatically. If clipboard copying fails, the window
-stays open so you can retrieve the transcript. The former `--paste` option is
+Quick mode never pastes automatically. The window stays open after copying;
+paste in your destination app, then press Escape to close it. The former `--paste` option is
 accepted for old shortcuts but only prints a notice; it does not inject keys.
 
 On this GNOME desktop, **Alt+Space** starts quick mode and **Ctrl+Alt+Space** opens
 the full GUI. Escape in the quick window cancels recording and closes it.
-The clipboard uses the existing `wl-copy` command on Wayland (xclip/xsel on X11)
-so copied text remains available after the quick window closes. No new clipboard
-package is installed here.
+The GUI uses Qt’s built-in clipboard. It never launches `wl-copy`, xclip, or xsel,
+so there are no clipboard helper windows or their focus notifications. Keep the
+window open until you have pasted; clipboard persistence after closing depends
+on your desktop clipboard manager.
 
 ## Optional terminal mode
 
@@ -54,7 +55,7 @@ package is installed here.
 ```
 
 Speak, then press Enter to stop recording. Ctrl+C cancels. The transcript is
-printed and copied, with no simulated paste.
+printed for manual selection and copying, with no clipboard helper or simulated paste.
 
 ## Checks
 
