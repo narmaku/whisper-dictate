@@ -3,6 +3,7 @@
 Local voice-to-text with a graphical microphone, model, and language selector.
 Record speech, transcribe it with faster-whisper on your CPU, then paste normally.
 No keyboard simulation, privileged input daemon, or Tkinter installation is needed.
+The rounded interface follows GNOME’s light/dark appearance setting.
 
 ## Setup
 
@@ -63,3 +64,10 @@ printed and copied, with no simulated paste.
 
 All audio processing and transcription happen locally. Model downloads contact
 Hugging Face; microphone audio is not uploaded.
+
+Microphone discovery, start/stop, model loading, and transcription run in background
+workers so the window stays responsive. Input is stopped using PortAudio abort,
+avoiding a draining-stop hang observed with this machine’s audio backend.
+Downloaded models load offline first; only uncached models need network access.
+Diagnostic milestones (without transcript text) are saved to
+`~/.local/state/whisper-dictate/runtime.log`.

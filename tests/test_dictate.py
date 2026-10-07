@@ -34,7 +34,17 @@ class DictationTests(unittest.TestCase):
     @patch('dictate.sd.InputStream')
     def test_cancel_closes_microphone(self,stream,read):
         with self.assertRaises(KeyboardInterrupt):dictate.record_audio()
-        self.assertTrue(stream.return_value.__exit__.called)
+        stream.return_value.abort.assert_called_once()
+        stream.return_value.close.assert_called_once()
+        stream.return_value.stop.assert_not_called()
+
+    def test_abort_failure_still_closes_microphone(self):
+        stream = Mock()
+        stream.abort.side_effect = RuntimeError('device disconnected')
+        with self.assertRaises(RuntimeError):
+            dictate.close_input_stream(stream)
+        stream.close.assert_called_once()
+        stream.stop.assert_not_called()
 
     @patch('dictate.clipboard_copy')
     def test_empty_audio_does_not_replace_clipboard(self,copy):
@@ -50,6 +60,17 @@ class DictationTests(unittest.TestCase):
         model=Mock();model.transcribe.return_value=([Mock(text=' hello'),Mock(text=' world ')],Mock())
         self.assertEqual(dictate.transcribe_and_copy(model,np.ones(16000,dtype=np.float32),'en'),'hello world')
         copy.assert_called_once_with('hello world')
+
+    @patch('dictate.WhisperModel')
+    def test_cached_model_does_not_require_network(self, model):
+        dictate.load_whisper_model('small')
+        model.assert_called_once_with('small', device='cpu', compute_type='int8', local_files_only=True)
+
+    @patch('dictate.WhisperModel', side_effect=[FileNotFoundError('not cached'), Mock()])
+    def test_new_model_can_still_download(self, model):
+        dictate.load_whisper_model('medium')
+        self.assertEqual(model.call_count, 2)
+        self.assertNotIn('local_files_only', model.call_args.kwargs)
 
     @patch.dict('os.environ', {'QT_QPA_PLATFORM': 'offscreen'})
     @patch('dictate.sd.query_devices', return_value=[{'name': 'Test microphone', 'max_input_channels': 1}])
