@@ -39,6 +39,9 @@ The language/model selectors remain available between recordings.
 Quick mode never pastes automatically. The window stays open after copying;
 paste in your destination app, then press Escape to close it. The former `--paste` option is
 accepted for old shortcuts but only prints a notice; it does not inject keys.
+Quick mode uses a compact floating window with a Stop button and recording meter;
+the transcript appears after transcription. Model, language, and microphone
+selectors are available in the full GUI.
 
 On this GNOME desktop, **Alt+Space** starts quick mode and **Ctrl+Alt+Space** opens
 the full GUI. Escape in the quick window cancels recording and closes it.

@@ -141,7 +141,7 @@ def run_gui(model_name, language, quick=False):
             self.resize(640, 380)
             if quick:
                 self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint)
-                self.resize(640, 220)
+                self.resize(420, 130)
             self.closing = False
             self.model = None
             self.stream = None
@@ -207,6 +207,15 @@ def run_gui(model_name, language, quick=False):
             self.level_timer.timeout.connect(self.update_level)
             self.level_timer.start(50)
             if quick:
+                self.setWindowTitle("Whisper Dictate — Quick")
+                for index in range(selectors.count()):
+                    widget = selectors.itemAt(index).widget()
+                    if widget is not None:
+                        widget.hide()
+                self.text.hide()
+                self.text.setMaximumHeight(90)
+                self.copy.hide()
+                self.clear.hide()
                 self.cancel_shortcut = QShortcut(QKeySequence("Escape"), self)
                 self.cancel_shortcut.activated.connect(self.close)
             self.record.clicked.connect(self.toggle_record)
@@ -377,6 +386,8 @@ def run_gui(model_name, language, quick=False):
                 return
             previous = self.text.toPlainText().strip()
             self.text.setPlainText((previous + " " + text).strip())
+            if quick:
+                self.text.show()
             copied = clipboard_copy(text)
             self.status.setText("Copied. Paste normally." if copied else
                                 "Copy failed. Select and copy the transcript manually.")
@@ -475,7 +486,7 @@ def run_gui(model_name, language, quick=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    parser.add_argument("--quick", action="store_true", help="Record immediately in the GUI and close after transcription")
+    parser.add_argument("--quick", action="store_true", help="Record immediately in a compact GUI; Escape closes after pasting")
     parser.add_argument("--terminal", action="store_true", help="Use a terminal instead of the GUI")
     parser.add_argument("--repeat", action="store_true", help="Keep the terminal open for more dictations")
     parser.add_argument("--paste", action="store_true", help=argparse.SUPPRESS)
